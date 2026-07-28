@@ -1,0 +1,168 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TaskManagerAPI.Data;
+using TaskManagerAPI.DTOs.SharedDtos;
+using TaskManagerAPI.DTOs.TaskItemsDTO;
+using TaskManagerAPI.DTOs.UserDTO;
+using TaskManagerAPI.Models;
+
+[Route("api/[controller]")]
+[ApiController]
+public class TaskItemsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    public TaskItemsController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // list all tasks grouped by project-------------------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetTasksGroupedByProject()
+    {
+        var taskItems = await _context.TaskItems.GroupBy(t => t.ProjectId)
+       .Select(t => new TasksGroupedByProjectDto
+       {
+           ProjectId = t.Key,
+           ProjectTitle = t.First().Project!.Title,
+           Tasks = t.Select(task => new TaskSummaryDto
+           {
+               Id = task.Id,
+               Title = task.Title,
+               IsCompleted = task.IsCompleted,
+               DeadLine = task.DeadLine
+           }).ToList()
+       }).ToListAsync();
+
+        return Ok(taskItems);
+    }
+
+    // get a task item by id-------------------------------------------------------------------------------------------------
+    [HttpGet("{id}")]
+    public async Task<ActionResult<TaskItemsResponseDto>> GetTaskItem(int id)
+    {
+        if (id <= 0)
+            return BadRequest("Id must be a positive number.");
+
+        var taskItem = await _context.TaskItems
+            .Select(t => new TaskItemsResponseDto
+            {
+                Id = t.Id,
+                Title = t.Title,
+                DeadLine = t.DeadLine,
+                IsCompleted = t.IsCompleted,
+                ProjectId = t.ProjectId,
+                ProjectName = t.Project!.Title
+            }).FirstOrDefaultAsync(x => x.Id == id);
+
+        if (taskItem == null)
+            return NotFound("The specified TaskItem does not exist.");
+
+        return Ok(taskItem);
+    }
+
+    // create a new task item------------------------------------------------------------------------------------------------
+    [HttpPost]
+    public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
+    {
+        if (string.IsNullOrWhiteSpace(newTaskItem.Title))
+            return BadRequest("Title cannot be empty.");
+
+        var project = await _context.Projects
+            .Where(p => p.Id == newTaskItem.ProjectId)
+            .Select(p => new { p.Id, p.Title })
+            .FirstOrDefaultAsync();
+
+        if (project == null)
+            return BadRequest("The specified ProjectId does not exist.");
+
+        var taskItem = new TaskItem
+        {
+            Title = newTaskItem.Title,
+            IsCompleted = newTaskItem.IsCompleted,
+            DeadLine = newTaskItem.DeadLine,
+            ProjectId = newTaskItem.ProjectId
+        };
+
+        _context.TaskItems.Add(taskItem);
+        await _context.SaveChangesAsync();
+
+        var responseDto = new TaskItemsResponseDto
+        {
+            Id = taskItem.Id,
+            Title = taskItem.Title,
+            IsCompleted = taskItem.IsCompleted,
+            DeadLine = taskItem.DeadLine,
+            ProjectId = taskItem.ProjectId,
+            ProjectName = project.Title  
+        };
+
+        return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, responseDto);
+    }
+    // update a task item by id----------------------------------------------------------------------------------------------
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateTask(int id, TaskUpdateDto updatedTask)
+    {
+        if (id <= 0)
+            return BadRequest("Id must be a positive number.");
+
+        if (string.IsNullOrWhiteSpace(updatedTask.Title))
+            return BadRequest("Title cannot be empty.");
+
+
+        var task = await _context.TaskItems.FindAsync(id);
+
+        if (task == null)
+            return NotFound("The specified TaskItem does not exist.");
+
+
+        if (updatedTask.DeadLine.HasValue && updatedTask.DeadLine.Value < DateTime.UtcNow)
+            return BadRequest("DeadLine cannot be in the past.");
+
+        task.Title = updatedTask.Title;
+        task.IsCompleted = updatedTask.IsCompleted;
+        task.DeadLine = updatedTask.DeadLine;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Delete a task item by id----------------------------------------------------------------------------------------------
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteTaskItem(int id)
+    {
+        if (id <= 0)
+            return BadRequest("Id must be a positive number.");
+
+        var taskitem = await _context.TaskItems.FindAsync(id);
+        if (taskitem == null)
+
+            return NotFound("The specified TaskItem does not exist.");
+
+        _context.TaskItems.Remove(taskitem);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Get all tasks for a specific project----------------------------------------------------------------------------------
+    [HttpGet("byproject/{projectId}")]
+    public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetTasksByProject(int projectId)
+    {
+        var tasks = await _context.TaskItems
+            .Where(t => t.ProjectId == projectId)
+            .Select(t => new TaskItemsResponseDto
+            {
+                Id = t.Id,
+                Title = t.Title,
+                IsCompleted = t.IsCompleted,
+                DeadLine = t.DeadLine,
+                ProjectId = t.ProjectId,
+                ProjectName = t.Project!.Title
+            })
+            .ToListAsync();
+
+        return Ok(tasks);
+    }
+}
