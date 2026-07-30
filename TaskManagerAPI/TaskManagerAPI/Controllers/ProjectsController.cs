@@ -26,11 +26,12 @@ namespace TaskManagerAPI.Controllers
             var projects = await _context.Projects
             .Select(p => new ProjectsWithOwnerDto
             {
-            Id = p.Id,
-            Title = p.Title,
-            Description = p.Description,
-            UserId = p.UserId,
-            Username = p.User!.Username
+                Id = p.Id,
+                Title = p.Title,
+                Description = p.Description,
+                UserId = p.UserId,
+                DeadLine = p.DeadLine,
+                Username = p.User!.Username
             }).ToListAsync();
 
             return Ok(projects);
@@ -43,7 +44,7 @@ namespace TaskManagerAPI.Controllers
             if (id <= 0)
                 return BadRequest("Id must be a positive number.");
 
-            var project= await _context.Projects.Select(p => new ProjectResponseWithOwnerAndTasksDTO
+            var project = await _context.Projects.Select(p => new ProjectResponseWithOwnerAndTasksDTO
             {
                 Id = p.Id,
                 Title = p.Title,
@@ -71,12 +72,6 @@ namespace TaskManagerAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProjectResponseDto>> CreateProject(ProjectCreateDto newProject)
         {
-            if (string.IsNullOrWhiteSpace(newProject.Title))
-                return BadRequest("Title is required.");
-
-            if (newProject.Title.Length > 100)
-                return BadRequest("Title cannot exceed 100 characters.");
-
             var userExists = await _context.Users.AnyAsync(u => u.Id == newProject.UserId);
             if (!userExists)
                 return BadRequest("The specified UserId does not exist.");
@@ -107,16 +102,8 @@ namespace TaskManagerAPI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProject(int id, ProjectUpdateDto updatedProject)
         {
-
             if (id <= 0)
                 return BadRequest("Id must be a positive number.");
-
-            if (string.IsNullOrWhiteSpace(updatedProject.Title))
-                return BadRequest("Title is required.");
-
-            if (updatedProject.Title.Length > 100)
-                return BadRequest("Title cannot exceed 100 characters.");
-
 
             var userExists = await _context.Users.AnyAsync(u => u.Id == updatedProject.UserId);
             if (!userExists)
