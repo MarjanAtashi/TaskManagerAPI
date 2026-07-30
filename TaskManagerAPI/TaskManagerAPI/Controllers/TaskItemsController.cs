@@ -64,10 +64,7 @@ public class TaskItemsController : ControllerBase
     // create a new task item------------------------------------------------------------------------------------------------
     [HttpPost]
     public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
-    {
-        if (string.IsNullOrWhiteSpace(newTaskItem.Title))
-            return BadRequest("Title cannot be empty.");
-
+    { 
         var project = await _context.Projects
             .Where(p => p.Id == newTaskItem.ProjectId)
             .Select(p => new { p.Id, p.Title })
@@ -106,18 +103,10 @@ public class TaskItemsController : ControllerBase
         if (id <= 0)
             return BadRequest("Id must be a positive number.");
 
-        if (string.IsNullOrWhiteSpace(updatedTask.Title))
-            return BadRequest("Title cannot be empty.");
-
-
         var task = await _context.TaskItems.FindAsync(id);
 
         if (task == null)
             return NotFound("The specified TaskItem does not exist.");
-
-
-        if (updatedTask.DeadLine.HasValue && updatedTask.DeadLine.Value < DateTime.UtcNow)
-            return BadRequest("DeadLine cannot be in the past.");
 
         task.Title = updatedTask.Title;
         task.IsCompleted = updatedTask.IsCompleted;
