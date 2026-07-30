@@ -88,7 +88,7 @@ namespace TaskManagerAPI.Controllers
         public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithDetailsAndTasks(int id)
         {
 
-            if (id <= 0)
+            if (id <= 0 )
                 return BadRequest("Id must be a positive number.");
 
             var user = await _context.Users
@@ -121,11 +121,6 @@ namespace TaskManagerAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
-            {
-                return BadRequest("Username and Password cannot be empty.");
-            }
-
             var user = new User
             {
                 Username = dto.Username,
@@ -158,11 +153,6 @@ namespace TaskManagerAPI.Controllers
             if (user == null)
                 return NotFound("There is no user with the specified ID.");
 
-
-            if (string.IsNullOrWhiteSpace(updatedUserDto.Username) || string.IsNullOrWhiteSpace(updatedUserDto.Password))
-            {
-                return BadRequest("Username and Password cannot be empty.");
-            }
 
             user.Username = updatedUserDto.Username;
             user.Password = updatedUserDto.Password;
