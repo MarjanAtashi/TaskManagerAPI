@@ -65,7 +65,7 @@ namespace TaskManagerAPI.Controllers
                 {
                     Id = u.Id,
                     Username = u.Username,
-                    Count = u.Projects.Count,
+                    ProjectCount = u.Projects.Count,
                     Projects = u.Projects.Select(p => new ProjectSummaryDto
                     {
                         Id = p.Id,
@@ -84,8 +84,8 @@ namespace TaskManagerAPI.Controllers
         }
 
         // Get a specific user by Id with project details and its tasks -----------------------------------------------------
-        [HttpGet("{id}/details")]
-        public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithDetailsAndTasks(int id)
+        [HttpGet("{id}/projects/details")]
+        public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithProjectsAndTasks(int id)
         {
 
             if (id <= 0 )

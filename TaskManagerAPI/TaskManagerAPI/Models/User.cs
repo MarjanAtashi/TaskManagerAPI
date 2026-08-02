@@ -1,4 +1,6 @@
-﻿namespace TaskManagerAPI.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace TaskManagerAPI.Models
 {
     public class User
     {
@@ -6,6 +8,6 @@
         public string Username { get; set; } = null!;
         public string Password { get; set; } = null!;
 
-        public List<Project> Projects { get; set; }= new List<Project>();
+        public List<Project> Projects { get; set; } = new();
     }
 }

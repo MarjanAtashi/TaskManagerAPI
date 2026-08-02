@@ -6,7 +6,7 @@ namespace TaskManagerAPI.DTOs.UserDTO
     {
         public int Id { get; set; }
         public string Username { get; set; } = null!;
-        public List<FullProjectSummaryDto> Projects { get; set; } = new List<FullProjectSummaryDto>();
+        public List<FullProjectSummaryDto> Projects { get; set; } = new();
 
     }
 }

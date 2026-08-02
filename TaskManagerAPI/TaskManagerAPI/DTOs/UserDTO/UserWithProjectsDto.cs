@@ -7,8 +7,8 @@ namespace TaskManagerAPI.DTOs.UserDTO
         public int Id { get; set; }
         public string Username { get; set; } = null!;
 
-        public int Count { get; set; }
+        public int ProjectCount { get; set; }
 
-        public List<ProjectSummaryDto> Projects { get; set; } = new List<ProjectSummaryDto>();
+        public List<ProjectSummaryDto> Projects { get; set; } = new();
     }
 }
