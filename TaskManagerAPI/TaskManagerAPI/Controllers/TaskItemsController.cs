@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.TaskItemsDTO;
@@ -16,16 +17,33 @@ public class TaskItemsController : ControllerBase
         _context = context;
     }
 
+    // list all tasks in basic version---------------------------------------------------------------------------------------
+    [HttpGet("taskitems/flat")]
+    public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetAllTasks()
+    {
+        var taskItems = await _context.TaskItems.Select(t => new TaskItemsResponseDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            DeadLine = t.DeadLine,
+            IsCompleted = t.IsCompleted,
+            ProjectId = t.ProjectId,
+            ProjectName = t.Project!.Title
+        }).ToListAsync();
+
+        return Ok(taskItems);
+    }
+
     // list all tasks grouped by project-------------------------------------------------------------------------------------
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetTasksGroupedByProject()
+    public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetTasksByProjects()
     {
         var taskItems = await _context.TaskItems.GroupBy(t => t.ProjectId)
        .Select(t => new TasksGroupedByProjectDto
        {
            ProjectId = t.Key,
            ProjectTitle = t.First().Project!.Title,
-           Tasks = t.Select(task => new TaskSummaryDto
+           TaskItems = t.Select(task => new TaskSummaryDto
            {
                Id = task.Id,
                Title = task.Title,
@@ -64,7 +82,7 @@ public class TaskItemsController : ControllerBase
     // create a new task item------------------------------------------------------------------------------------------------
     [HttpPost]
     public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
-    { 
+    {
         var project = await _context.Projects
             .Where(p => p.Id == newTaskItem.ProjectId)
             .Select(p => new { p.Id, p.Title })
@@ -91,7 +109,7 @@ public class TaskItemsController : ControllerBase
             IsCompleted = taskItem.IsCompleted,
             DeadLine = taskItem.DeadLine,
             ProjectId = taskItem.ProjectId,
-            ProjectName = project.Title  
+            ProjectName = project.Title
         };
 
         return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, responseDto);
@@ -125,8 +143,8 @@ public class TaskItemsController : ControllerBase
             return BadRequest("Id must be a positive number.");
 
         var taskitem = await _context.TaskItems.FindAsync(id);
-        if (taskitem == null)
 
+        if (taskitem == null)
             return NotFound("The specified TaskItem does not exist.");
 
         _context.TaskItems.Remove(taskitem);
@@ -136,9 +154,14 @@ public class TaskItemsController : ControllerBase
     }
 
     // Get all tasks for a specific project----------------------------------------------------------------------------------
-    [HttpGet("byproject/{projectId}")]
+    [HttpGet("project/{projectId}")]
     public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetTasksByProject(int projectId)
     {
+        var projectExists = await _context.Projects.AnyAsync(p => p.Id == projectId);
+
+        if (!projectExists)
+            return NotFound("The specified Project does not exist.");
+
         var tasks = await _context.TaskItems
             .Where(t => t.ProjectId == projectId)
             .Select(t => new TaskItemsResponseDto
