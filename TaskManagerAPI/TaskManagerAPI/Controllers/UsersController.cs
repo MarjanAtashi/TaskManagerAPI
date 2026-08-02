@@ -100,7 +100,7 @@ namespace TaskManagerAPI.Controllers
                     {
                         Id = p.Id,
                         Title = p.Title,
-                        TaskItems = p.Items.Select(t => new TaskSummaryDto
+                        TaskItems = p.TaskItems.Select(t => new TaskSummaryDto
                         {
                             Id = t.Id,
                             Title = t.Title,
@@ -169,10 +169,19 @@ namespace TaskManagerAPI.Controllers
             if (id <= 0)
                 return BadRequest("Id must be a positive number.");
 
+            if (id == 1)
+                return BadRequest("System user cannot be deleted.");
+
+
             var user = await _context.Users.FindAsync(id);
 
             if (user == null)
                 return NotFound("There is no user with the specified ID.");
+
+            var projects=await _context.Projects.Where(p => p.UserId == id).ToListAsync();
+
+            foreach (var project in projects)
+                project.UserId = 1;
 
 
             _context.Users.Remove(user);

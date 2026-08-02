@@ -5,7 +5,7 @@ namespace TaskManagerAPI.DTOs.ProjectDTO
 {
     public class ProjectCreateDto
     {
-        [Required(ErrorMessage = "Title required")]
+        [Required(ErrorMessage = "Title is required")]
         [StringLength(100, MinimumLength = 3, ErrorMessage = " Project Title must be between 3 and 100 characters long")]
         public string Title { get; set; } = null!;
 

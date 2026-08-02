@@ -52,7 +52,7 @@ namespace TaskManagerAPI.Controllers
                 DeadLine = p.DeadLine,
                 UserId = p.UserId,
                 Username = p.User!.Username,
-                Tasks = p.Items.Select(t => new TaskSummaryDto
+                TaskItems = p.TaskItems.Select(t => new TaskSummaryDto
                 {
                     Id = t.Id,
                     Title = t.Title,
@@ -76,7 +76,7 @@ namespace TaskManagerAPI.Controllers
             if (!userExists)
                 return BadRequest("The specified UserId does not exist.");
 
-            var project = new Project()
+            var project = new Project
             {
                 Title = newProject.Title,
                 Description = newProject.Description,
@@ -105,19 +105,15 @@ namespace TaskManagerAPI.Controllers
             if (id <= 0)
                 return BadRequest("Id must be a positive number.");
 
-            var userExists = await _context.Users.AnyAsync(u => u.Id == updatedProject.UserId);
-            if (!userExists)
-                return BadRequest("The specified UserId does not exist.");
-
             var project = await _context.Projects.FindAsync(id);
 
             if (project == null)
-                return NotFound();
+                return NotFound("There is no project with the specified ID.");
 
             project.Title = updatedProject.Title;
             project.Description = updatedProject.Description;
             project.DeadLine = updatedProject.DeadLine;
-            project.UserId = updatedProject.UserId;
+
 
             await _context.SaveChangesAsync();
 
@@ -134,7 +130,7 @@ namespace TaskManagerAPI.Controllers
             var project = await _context.Projects.FindAsync(id);
 
             if (project == null)
-                return NotFound();
+                return NotFound("There is no project with the specified ID.");
 
             _context.Projects.Remove(project);
             await _context.SaveChangesAsync();

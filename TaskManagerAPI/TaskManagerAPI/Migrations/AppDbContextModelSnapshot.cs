@@ -97,6 +97,14 @@ namespace TaskManagerAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Password = "SystemUserPassword",
+                            Username = "DeletedUser"
+                        });
                 });
 
             modelBuilder.Entity("TaskManagerAPI.Models.Project", b =>
@@ -104,7 +112,7 @@ namespace TaskManagerAPI.Migrations
                     b.HasOne("TaskManagerAPI.Models.User", "User")
                         .WithMany("Projects")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -113,7 +121,7 @@ namespace TaskManagerAPI.Migrations
             modelBuilder.Entity("TaskManagerAPI.Models.TaskItem", b =>
                 {
                     b.HasOne("TaskManagerAPI.Models.Project", "Project")
-                        .WithMany("Items")
+                        .WithMany("TaskItems")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -123,7 +131,7 @@ namespace TaskManagerAPI.Migrations
 
             modelBuilder.Entity("TaskManagerAPI.Models.Project", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("TaskItems");
                 });
 
             modelBuilder.Entity("TaskManagerAPI.Models.User", b =>

@@ -12,6 +12,6 @@ namespace TaskManagerAPI.DTOs.ProjectDTO
         public int UserId { get; set; }
         public string Username { get; set; }= null!;
 
-        public List<TaskSummaryDto> Tasks { get; set; }= new List<TaskSummaryDto>();
+        public List<TaskSummaryDto> TaskItems { get; set; }= new();
     }
 }

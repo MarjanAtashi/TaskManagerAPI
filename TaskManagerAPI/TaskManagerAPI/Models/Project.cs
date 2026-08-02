@@ -7,10 +7,10 @@
         public string? Description { get; set; }
         public DateTime? DeadLine { get; set; }
 
-        public int UserId { get; set; }
         public User? User { get; set; }
+        public int UserId { get; set; }
 
-        public List<TaskItem> Items { get; set; }= new List<TaskItem>();
+        public List<TaskItem> TaskItems { get; set; }= new();
 
 
     }

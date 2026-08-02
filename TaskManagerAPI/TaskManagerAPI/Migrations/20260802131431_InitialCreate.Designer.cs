@@ -12,8 +12,8 @@ using TaskManagerAPI.Data;
 namespace TaskManagerAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260724184758_initialInformations")]
-    partial class initialInformations
+    [Migration("20260802131431_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,11 +33,10 @@ namespace TaskManagerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("DeadLine")
+                    b.Property<DateTime?>("DeadLine")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
@@ -62,7 +61,7 @@ namespace TaskManagerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("DeadLine")
+                    b.Property<DateTime?>("DeadLine")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsCompleted")
@@ -101,6 +100,14 @@ namespace TaskManagerAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Password = "SystemUserPassword",
+                            Username = "DeletedUser"
+                        });
                 });
 
             modelBuilder.Entity("TaskManagerAPI.Models.Project", b =>
@@ -108,7 +115,7 @@ namespace TaskManagerAPI.Migrations
                     b.HasOne("TaskManagerAPI.Models.User", "User")
                         .WithMany("Projects")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -117,7 +124,7 @@ namespace TaskManagerAPI.Migrations
             modelBuilder.Entity("TaskManagerAPI.Models.TaskItem", b =>
                 {
                     b.HasOne("TaskManagerAPI.Models.Project", "Project")
-                        .WithMany("Items")
+                        .WithMany("TaskItems")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -127,7 +134,7 @@ namespace TaskManagerAPI.Migrations
 
             modelBuilder.Entity("TaskManagerAPI.Models.Project", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("TaskItems");
                 });
 
             modelBuilder.Entity("TaskManagerAPI.Models.User", b =>
