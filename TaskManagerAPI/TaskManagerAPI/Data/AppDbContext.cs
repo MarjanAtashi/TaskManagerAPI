@@ -31,11 +31,12 @@ namespace TaskManagerAPI.Data
 
             modelBuilder.Entity<User>().HasData(
               new User
-             {
-              Id = 1,
-              Username = "DeletedUser",
-              Password = "SystemUserPassword"
-             });
+              {
+                  Id = 1,
+                  Username = "DeletedUser",
+                  Email = "DeletedUser@gmail.com",
+                  PasswordHash = "SystemUserPassword"
+              });
         }
 
     }

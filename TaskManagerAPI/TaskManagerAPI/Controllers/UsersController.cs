@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Humanizer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
@@ -25,7 +26,8 @@ namespace TaskManagerAPI.Controllers
             var users = await _context.Users.Select(u => new UserResponseDto
             {
                 Id = u.Id,
-                Username = u.Username
+                Username = u.Username,
+                Email = u.Email,
             }).ToListAsync();
 
             return Ok(users);
@@ -43,7 +45,8 @@ namespace TaskManagerAPI.Controllers
           .Select(u => new UserResponseDto
           {
               Id = u.Id,
-              Username = u.Username
+              Username = u.Username,
+              Email = u.Email,
           }).FirstOrDefaultAsync(x => x.Id == id);
 
             if (user == null)
@@ -65,6 +68,7 @@ namespace TaskManagerAPI.Controllers
                 {
                     Id = u.Id,
                     Username = u.Username,
+                    Email = u.Email,
                     ProjectCount = u.Projects.Count,
                     Projects = u.Projects.Select(p => new ProjectSummaryDto
                     {
@@ -88,7 +92,7 @@ namespace TaskManagerAPI.Controllers
         public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithProjectsAndTasks(int id)
         {
 
-            if (id <= 0 )
+            if (id <= 0)
                 return BadRequest("Id must be a positive number.");
 
             var user = await _context.Users
@@ -96,6 +100,7 @@ namespace TaskManagerAPI.Controllers
                 {
                     Id = u.Id,
                     Username = u.Username,
+                    Email = u.Email,
                     Projects = u.Projects.Select(p => new FullProjectSummaryDto
                     {
                         Id = p.Id,
@@ -121,10 +126,17 @@ namespace TaskManagerAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
         {
+            if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
+                return BadRequest("Username already exists.");
+
+            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+                return BadRequest("Email already exists.");
+
             var user = new User
             {
                 Username = dto.Username,
-                Password = dto.Password
+                Email = dto.Email,
+                PasswordHash = dto.Password
             };
 
             _context.Users.Add(user);
@@ -134,7 +146,8 @@ namespace TaskManagerAPI.Controllers
             var responseDto = new UserResponseDto
             {
                 Id = user.Id,
-                Username = user.Username
+                Username = user.Username,
+                Email = user.Email
             };
 
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, responseDto);
@@ -147,6 +160,8 @@ namespace TaskManagerAPI.Controllers
 
             if (id <= 0)
                 return BadRequest("Id must be a positive number.");
+            if (id == 1)
+                return BadRequest("Can not edit this user");
 
             var user = await _context.Users.FindAsync(id);
 
@@ -154,8 +169,16 @@ namespace TaskManagerAPI.Controllers
                 return NotFound("There is no user with the specified ID.");
 
 
+            if (await _context.Users.AnyAsync(u => u.Username == updatedUserDto.Username && u.Id != id))
+                return BadRequest("Username already exists.");
+
+            if (await _context.Users.AnyAsync(u => u.Email == updatedUserDto.Email && u.Id != id))
+                return BadRequest("Email already exists.");
+
+
             user.Username = updatedUserDto.Username;
-            user.Password = updatedUserDto.Password;
+            user.Email = updatedUserDto.Email;
+            user.PasswordHash = updatedUserDto.Password;
 
             await _context.SaveChangesAsync();
 
@@ -178,7 +201,7 @@ namespace TaskManagerAPI.Controllers
             if (user == null)
                 return NotFound("There is no user with the specified ID.");
 
-            var projects=await _context.Projects.Where(p => p.UserId == id).ToListAsync();
+            var projects = await _context.Projects.Where(p => p.UserId == id).ToListAsync();
 
             foreach (var project in projects)
                 project.UserId = 1;
