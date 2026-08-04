@@ -1,22 +1,24 @@
-﻿using Humanizer;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.UserDTO;
 using TaskManagerAPI.Models;
-
+using TaskManagerAPI.Services;
 namespace TaskManagerAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly AppDbContext _context;
 
-        public UsersController(AppDbContext context)
+        private readonly AppDbContext _context;
+        private readonly PasswordService _passwordService;
+
+        public UsersController(AppDbContext context, PasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
         //List of all users --------------------------------------------------------------------------------------------------
@@ -136,7 +138,7 @@ namespace TaskManagerAPI.Controllers
             {
                 Username = dto.Username,
                 Email = dto.Email,
-                PasswordHash = dto.Password
+                PasswordHash = _passwordService.HashPassword(dto.Password)
             };
 
             _context.Users.Add(user);
@@ -178,7 +180,7 @@ namespace TaskManagerAPI.Controllers
 
             user.Username = updatedUserDto.Username;
             user.Email = updatedUserDto.Email;
-            user.PasswordHash = updatedUserDto.Password;
+            user.PasswordHash = _passwordService.HashPassword(updatedUserDto.Password);
 
             await _context.SaveChangesAsync();
 
