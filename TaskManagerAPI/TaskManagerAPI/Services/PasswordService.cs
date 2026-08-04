@@ -4,9 +4,9 @@ using static BCrypt.Net.BCrypt;
 
 public class PasswordService
 {
-    public string HashingPassword(string password)
+    public string HashPassword(string password)
     {
-        return HashPassword(password);
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 
     public bool VerifyPassword(string password, string hashedPassword)

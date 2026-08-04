@@ -42,7 +42,35 @@ namespace TaskManagerAPI.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new RegisterResponseDto
+            return CreatedAtAction(nameof(Register), new { id = user.Id }, new RegisterResponseDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Role = user.Role
+            });
+
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginDto loginDto)
+        {
+            var user = await _context.Users
+                      .FirstOrDefaultAsync(u => u.Username == loginDto.UsernameOrEmail || u.Email == loginDto.UsernameOrEmail);
+
+            if (user == null)
+            {
+                return Unauthorized("Invalid username or password.");
+            }
+
+            var isPasswordValid = _passwordService.VerifyPassword(loginDto.Password, user.PasswordHash);
+
+            if (!isPasswordValid)
+            {
+                return Unauthorized("Invalid username or password.");
+            }
+
+            return Ok(new LoginResponseDto
             {
                 Id = user.Id,
                 Username = user.Username,
