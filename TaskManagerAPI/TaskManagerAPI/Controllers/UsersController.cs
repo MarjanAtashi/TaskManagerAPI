@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.UserDTO;
@@ -24,6 +25,7 @@ namespace TaskManagerAPI.Controllers
 
         //List of all users --------------------------------------------------------------------------------------------------
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllUsers()
         {
             var users = await _context.Users.Select(u => new UserResponseDto
@@ -38,6 +40,7 @@ namespace TaskManagerAPI.Controllers
 
         // Get a specific user by Id -----------------------------------------------------------------------------------------
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserResponseDto>> GetUser(int id)
         {
 
@@ -61,6 +64,7 @@ namespace TaskManagerAPI.Controllers
 
         // Get a specific user by Id with project details -------------------------------------------------------------------
         [HttpGet("{id}/projects")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserWithProjectsDto>> GetUserByIdWithDetails(int id)
         {
             if (id <= 0)
@@ -92,6 +96,7 @@ namespace TaskManagerAPI.Controllers
 
         // Get a specific user by Id with project details and its tasks -----------------------------------------------------
         [HttpGet("{id}/projects/details")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithProjectsAndTasks(int id)
         {
 
@@ -190,6 +195,7 @@ namespace TaskManagerAPI.Controllers
 
         // Delete a user -----------------------------------------------------------------------------------------------------
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             if (id <= 0)
@@ -214,6 +220,23 @@ namespace TaskManagerAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        //-------------------------------------------------------------------------------------------------------------------
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            return Ok(new
+            {
+                UserId = userId,
+                Username = username,
+                Role = role
+            });
+
         }
 
     }

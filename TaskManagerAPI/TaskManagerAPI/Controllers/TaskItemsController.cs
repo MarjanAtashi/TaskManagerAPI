@@ -21,6 +21,7 @@ public class TaskItemsController : ControllerBase
 
     // list all tasks in basic version---------------------------------------------------------------------------------------
     [HttpGet("taskitems/flat")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetAllTasks()
     {
         var taskItems = await _context.TaskItems.Select(t => new TaskItemsResponseDto
@@ -38,6 +39,7 @@ public class TaskItemsController : ControllerBase
 
     // list all tasks grouped by project-------------------------------------------------------------------------------------
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetTasksByProjects()
     {
         var taskItems = await _context.TaskItems.GroupBy(t => t.ProjectId)
@@ -83,6 +85,7 @@ public class TaskItemsController : ControllerBase
 
     // create a new task item------------------------------------------------------------------------------------------------
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
     {
         var project = await _context.Projects
@@ -118,6 +121,7 @@ public class TaskItemsController : ControllerBase
     }
     // update a task item by id----------------------------------------------------------------------------------------------
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateTask(int id, TaskUpdateDto updatedTask)
     {
         if (id <= 0)
@@ -139,6 +143,7 @@ public class TaskItemsController : ControllerBase
 
     // Delete a task item by id----------------------------------------------------------------------------------------------
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTaskItem(int id)
     {
         if (id <= 0)

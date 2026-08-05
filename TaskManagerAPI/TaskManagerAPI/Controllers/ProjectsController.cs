@@ -21,8 +21,8 @@ namespace TaskManagerAPI.Controllers
         }
 
         // List all projects with owner--------------------------------------------------------------------------------------
-
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<ProjectsWithOwnerDto>>> GetAllProjects()
         {
             var projects = await _context.Projects
