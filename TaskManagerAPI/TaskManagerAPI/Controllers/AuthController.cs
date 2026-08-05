@@ -15,11 +15,13 @@ namespace TaskManagerAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly PasswordService _passwordService;
+        private readonly JwtService _jwtService;
 
-        public AuthController(AppDbContext context, PasswordService passwordService)
+        public AuthController(AppDbContext context, PasswordService passwordService, JwtService jwtService)
         {
             _context = context;
             _passwordService = passwordService;
+            _jwtService = jwtService;
         }
 
         [HttpPost("register")]
@@ -55,8 +57,8 @@ namespace TaskManagerAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
-            var user = await _context.Users
-                      .FirstOrDefaultAsync(u => u.Username == loginDto.UsernameOrEmail || u.Email == loginDto.UsernameOrEmail);
+            var user = await _context.Users.FirstOrDefaultAsync(u =>
+            u.Username == loginDto.UsernameOrEmail || u.Email == loginDto.UsernameOrEmail);
 
             if (user == null)
             {
@@ -70,12 +72,15 @@ namespace TaskManagerAPI.Controllers
                 return Unauthorized("Invalid username or password.");
             }
 
+            var token = _jwtService.GenerateToken(user);
+
             return Ok(new LoginResponseDto
             {
                 Id = user.Id,
                 Username = user.Username,
                 Email = user.Email,
-                Role = user.Role
+                Role = user.Role,
+                AccessToken = token
             });
         }
 

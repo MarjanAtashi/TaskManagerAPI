@@ -1,14 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.UserDTO;
-using TaskManagerAPI.Models;
 using TaskManagerAPI.Services;
 namespace TaskManagerAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
 
@@ -125,35 +126,35 @@ namespace TaskManagerAPI.Controllers
 
 
         // Create a new user ------------------------------------------------------------------------------------------------
-        [HttpPost]
-        public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
-        {
-            if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
-                return BadRequest("Username already exists.");
+        /*  [HttpPost]
+          public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
+          {
+              if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
+                  return BadRequest("Username already exists.");
 
-            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
-                return BadRequest("Email already exists.");
+              if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+                  return BadRequest("Email already exists.");
 
-            var user = new User
-            {
-                Username = dto.Username,
-                Email = dto.Email,
-                PasswordHash = _passwordService.HashPassword(dto.Password)
-            };
+              var user = new User
+              {
+                  Username = dto.Username,
+                  Email = dto.Email,
+                  PasswordHash = _passwordService.HashPassword(dto.Password)
+              };
 
-            _context.Users.Add(user);
+              _context.Users.Add(user);
 
-            await _context.SaveChangesAsync();
+              await _context.SaveChangesAsync();
 
-            var responseDto = new UserResponseDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email
-            };
+              var responseDto = new UserResponseDto
+              {
+                  Id = user.Id,
+                  Username = user.Username,
+                  Email = user.Email
+              };
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, responseDto);
-        }
+              return CreatedAtAction(nameof(GetUser), new { id = user.Id }, responseDto);
+          }*/
 
         // Update an existing user -------------------------------------------------------------------------------------------
         [HttpPut("{id}")]
