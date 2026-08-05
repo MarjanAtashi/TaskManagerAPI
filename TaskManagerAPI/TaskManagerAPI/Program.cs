@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddDbContext<AppDbContext>(options =>options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<JwtService>();
 
@@ -46,6 +46,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
         };
     });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanManageUsers", policy =>
+      {
+      policy.RequireRole("Admin");
+  });
+});
 
 var app = builder.Build();
 
