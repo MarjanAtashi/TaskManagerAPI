@@ -15,7 +15,5 @@ namespace TaskManagerAPI.DTOs.ProjectDTO
         [FutureDate(ErrorMessage = "DeadLine cannot be in the past")]
         public DateTime? DeadLine { get; set; }
 
-        [Required(ErrorMessage = "User ID required")]
-        public int UserId { get; set; }
     }
 }

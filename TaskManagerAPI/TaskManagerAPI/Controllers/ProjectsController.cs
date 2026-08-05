@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.ProjectDTO;
 using TaskManagerAPI.DTOs.SharedDtos;
@@ -18,6 +19,7 @@ namespace TaskManagerAPI.Controllers
         public ProjectsController(AppDbContext context)
         {
             _context = context;
+
         }
 
         // List all projects with owner--------------------------------------------------------------------------------------
@@ -41,6 +43,7 @@ namespace TaskManagerAPI.Controllers
 
         // Get a specific project by ID with its owner and tasks--------------------------------------------------------------------
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ProjectResponseWithOwnerAndTasksDTO>> GetProject(int id)
         {
             if (id <= 0)
@@ -74,16 +77,14 @@ namespace TaskManagerAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProjectResponseDto>> CreateProject(ProjectCreateDto newProject)
         {
-            var userExists = await _context.Users.AnyAsync(u => u.Id == newProject.UserId);
-            if (!userExists)
-                return BadRequest("The specified UserId does not exist.");
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             var project = new Project
             {
                 Title = newProject.Title,
                 Description = newProject.Description,
                 DeadLine = newProject.DeadLine,
-                UserId = newProject.UserId,
+                UserId = currentUserId
             };
 
             _context.Projects.Add(project);
@@ -112,6 +113,11 @@ namespace TaskManagerAPI.Controllers
             if (project == null)
                 return NotFound("There is no project with the specified ID.");
 
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            if (currentUserId != project.UserId)
+                return Forbid("You are not the owner of this project.");
+
             project.Title = updatedProject.Title;
             project.Description = updatedProject.Description;
             project.DeadLine = updatedProject.DeadLine;
@@ -133,6 +139,11 @@ namespace TaskManagerAPI.Controllers
 
             if (project == null)
                 return NotFound("There is no project with the specified ID.");
+
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            if (currentUserId != project.UserId)
+                return Forbid("You are not the owner of this project.");
 
             _context.Projects.Remove(project);
             await _context.SaveChangesAsync();

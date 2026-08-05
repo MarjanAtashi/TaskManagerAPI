@@ -35,7 +35,9 @@ namespace TaskManagerAPI.Services
                issuer: _configuration["Jwt:Issuer"],
                audience: _configuration["Jwt:Audience"],
                claims: claims,
-               expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])), signingCredentials: credentials);
+               expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
+               signingCredentials: credentials);
+
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }

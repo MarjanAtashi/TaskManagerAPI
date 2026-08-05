@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections;
+using System.Security.Claims;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.TaskItemsDTO;
@@ -85,16 +87,20 @@ public class TaskItemsController : ControllerBase
 
     // create a new task item------------------------------------------------------------------------------------------------
     [HttpPost]
-    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
     {
         var project = await _context.Projects
             .Where(p => p.Id == newTaskItem.ProjectId)
-            .Select(p => new { p.Id, p.Title })
+            .Select(p => new { p.Id, p.Title, p.UserId })
             .FirstOrDefaultAsync();
 
         if (project == null)
             return BadRequest("The specified ProjectId does not exist.");
+
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        if (currentUserId != project.UserId)
+            return Forbid("You are not authorized to create a task for this project.");
 
         var taskItem = new TaskItem
         {
@@ -121,7 +127,6 @@ public class TaskItemsController : ControllerBase
     }
     // update a task item by id----------------------------------------------------------------------------------------------
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateTask(int id, TaskUpdateDto updatedTask)
     {
         if (id <= 0)
@@ -131,6 +136,15 @@ public class TaskItemsController : ControllerBase
 
         if (task == null)
             return NotFound("The specified TaskItem does not exist.");
+
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var project = await _context.Projects.FindAsync(task.ProjectId);
+
+        if(project == null)
+            return NotFound("The project associated with this task does not exist.");
+
+        if (currentUserId != project.UserId)
+            return Forbid("You are not authorized to update this task.");
 
         task.Title = updatedTask.Title;
         task.IsCompleted = updatedTask.IsCompleted;
@@ -143,18 +157,26 @@ public class TaskItemsController : ControllerBase
 
     // Delete a task item by id----------------------------------------------------------------------------------------------
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTaskItem(int id)
     {
         if (id <= 0)
             return BadRequest("Id must be a positive number.");
 
-        var taskitem = await _context.TaskItems.FindAsync(id);
+        var task = await _context.TaskItems.FindAsync(id);
 
-        if (taskitem == null)
+        if (task == null)
             return NotFound("The specified TaskItem does not exist.");
 
-        _context.TaskItems.Remove(taskitem);
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var project = await _context.Projects.FindAsync(task.ProjectId);
+
+        if (project == null)
+            return NotFound("The project associated with this task does not exist.");
+
+        if (currentUserId != project.UserId)
+            return Forbid("You are not authorized to delete  this task.");
+
+        _context.TaskItems.Remove(task);
         await _context.SaveChangesAsync();
 
         return NoContent();
