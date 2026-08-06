@@ -1,22 +1,23 @@
-﻿using TaskManagerAPI.Models;
-using System.Security.Claims;
+﻿using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
+using TaskManagerAPI.Models;
 
 namespace TaskManagerAPI.Services
 {
-    public class JwtService
+    public class TokenService
     {
         private readonly IConfiguration _configuration;
 
-        public JwtService(IConfiguration configuration)
+        public TokenService(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
 
-        public string GenerateToken(User user)
+        public string GenerateAccessToken(User user)
         {
             var claims = new List<Claim>
           {
@@ -40,6 +41,18 @@ namespace TaskManagerAPI.Services
 
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public RefreshToken GenerateRefreshToken()
+        {
+            var randomBytes = RandomNumberGenerator.GetBytes(64);
+
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(randomBytes),
+                Expires = DateTime.UtcNow.AddDays(30),
+                Created = DateTime.UtcNow
+            };
         }
     }
 }

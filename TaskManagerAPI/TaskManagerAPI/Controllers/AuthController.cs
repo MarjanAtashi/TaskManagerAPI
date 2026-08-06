@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.AuthDTOs;
 using TaskManagerAPI.Models;
@@ -15,13 +16,13 @@ namespace TaskManagerAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly PasswordService _passwordService;
-        private readonly JwtService _jwtService;
+        private readonly TokenService _tokenService;
 
-        public AuthController(AppDbContext context, PasswordService passwordService, JwtService jwtService)
+        public AuthController(AppDbContext context, PasswordService passwordService, TokenService tokenService)
         {
             _context = context;
             _passwordService = passwordService;
-            _jwtService = jwtService;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -72,7 +73,12 @@ namespace TaskManagerAPI.Controllers
                 return Unauthorized("Invalid username or password.");
             }
 
-            var token = _jwtService.GenerateToken(user);
+            var accessToken = _tokenService.GenerateAccessToken(user);
+
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            refreshToken.UserId = user.Id;
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
 
             return Ok(new LoginResponseDto
             {
@@ -80,8 +86,50 @@ namespace TaskManagerAPI.Controllers
                 Username = user.Username,
                 Email = user.Email,
                 Role = user.Role,
-                AccessToken = token
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token
             });
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshToken(RefreshTokenRequestDto request)
+        {
+            var refreshToken = await _context.RefreshTokens
+               .Include(rt => rt.User)
+               .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+
+
+            if (refreshToken == null)
+            {
+                return Unauthorized("Invalid refresh token.");
+            }
+            if (refreshToken.Expires <= DateTime.UtcNow)
+            {
+                return Unauthorized("Refresh token has expired.");
+            }
+            if (refreshToken.Revoked != null)
+            {
+                return Unauthorized("Refresh token has been revoked.");
+            }
+
+            refreshToken.Revoked = DateTime.UtcNow;
+
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            newRefreshToken.UserId = refreshToken.UserId;
+
+            _context.RefreshTokens.Add(newRefreshToken);
+
+            var newAccessToken = _tokenService.GenerateAccessToken(refreshToken.User);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                accessToken = newAccessToken,
+                refreshToken = newRefreshToken.Token
+            });
+
         }
 
     }

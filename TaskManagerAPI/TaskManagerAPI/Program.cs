@@ -30,7 +30,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<PasswordService>();
-builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -51,8 +51,8 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("CanManageUsers", policy =>
       {
-      policy.RequireRole("Admin");
-  });
+          policy.RequireRole("Admin");
+      });
 });
 
 var app = builder.Build();
