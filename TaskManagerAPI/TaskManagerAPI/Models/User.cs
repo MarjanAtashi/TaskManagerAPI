@@ -12,6 +12,8 @@
 
         public string Role { get; set; } = "User";
 
-        public List<Project> Projects { get; set; } = new();
+        public List<Project> Projects { get; set; } = [];
+
+        public List<RefreshToken> RefreshTokens { get; set; } = [];
     }
 }

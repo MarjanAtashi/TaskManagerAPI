@@ -8,9 +8,14 @@ namespace TaskManagerAPI.Data
         public AppDbContext(DbContextOptions options) : base(options)
         {
         }
+
         public DbSet<User> Users { get; set; }
+
         public DbSet<Project> Projects { get; set; }
+
         public DbSet<TaskItem> TaskItems { get; set; }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -37,6 +42,11 @@ namespace TaskManagerAPI.Data
                   Email = "DeletedUser@gmail.com",
                   PasswordHash = "SystemUserPassword"
               });
+
+            modelBuilder.Entity<RefreshToken>()
+               .HasOne(rt => rt.User)
+               .WithMany(u => u.RefreshTokens)
+               .HasForeignKey(rt => rt.UserId);
         }
 
     }
