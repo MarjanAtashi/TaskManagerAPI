@@ -128,6 +128,7 @@ namespace TaskManagerAPI.Controllers
             return NoContent();
         }
 
+
         // Delete a project--------------------------------------------------------------------------------------------------
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
