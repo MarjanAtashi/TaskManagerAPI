@@ -132,5 +132,25 @@ namespace TaskManagerAPI.Controllers
 
         }
 
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout(RefreshTokenRequestDto request)
+        {
+            var refreshToken= _context.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+
+            if (refreshToken == null) 
+                return Unauthorized("Invalid refresh token."); 
+
+            if (refreshToken.Revoked != null)
+                return BadRequest("Refresh token already revoked.");
+
+            refreshToken.Revoked = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Logged out successfully.");
+
+
+        }
+
     }
 }
