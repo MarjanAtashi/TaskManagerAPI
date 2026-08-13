@@ -1,209 +1,79 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Collections;
-using System.Security.Claims;
-using TaskManagerAPI.Data;
-using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.TaskItemsDTO;
-using TaskManagerAPI.DTOs.UserDTO;
-using TaskManagerAPI.Models;
+using TaskManagerAPI.Services.Interfaces;
+namespace TaskManagerAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
 public class TaskItemsController : ControllerBase
 {
-    private readonly AppDbContext _context;
-    public TaskItemsController(AppDbContext context)
+    private readonly ITaskItemsService _taskItemsService;
+    public TaskItemsController(ITaskItemsService taskItemsService)
     {
-        _context = context;
+        _taskItemsService = taskItemsService;
     }
 
     // list all tasks in basic version---------------------------------------------------------------------------------------
-    [HttpGet("taskitems/flat")]
-    [Authorize(Roles = "Admin")]
+    [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetAllTasks()
     {
-        var taskItems = await _context.TaskItems.Select(t => new TaskItemsResponseDto
-        {
-            Id = t.Id,
-            Title = t.Title,
-            DeadLine = t.DeadLine,
-            IsCompleted = t.IsCompleted,
-            ProjectId = t.ProjectId,
-            ProjectName = t.Project!.Title
-        }).ToListAsync();
+        var result = await _taskItemsService.GetAllTasks();
 
-        return Ok(taskItems);
+        return Ok(result);
     }
 
     // list all tasks grouped by project-------------------------------------------------------------------------------------
-    [HttpGet]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetTasksByProjects()
+    [HttpGet("grouped")]
+    public async Task<ActionResult<IEnumerable<TasksGroupedByProjectDto>>> GetAllGroupedTasks()
     {
-        var taskItems = await _context.TaskItems.GroupBy(t => t.ProjectId)
-       .Select(t => new TasksGroupedByProjectDto
-       {
-           ProjectId = t.Key,
-           ProjectTitle = t.First().Project!.Title,
-           TaskItems = t.Select(task => new TaskSummaryDto
-           {
-               Id = task.Id,
-               Title = task.Title,
-               IsCompleted = task.IsCompleted,
-               DeadLine = task.DeadLine
-           }).ToList()
-       }).ToListAsync();
+        var result = await _taskItemsService.GetAllGroupedTasks();
 
-        return Ok(taskItems);
+        return Ok(result);
     }
 
     // get a task item by id-------------------------------------------------------------------------------------------------
     [HttpGet("{id}")]
     public async Task<ActionResult<TaskItemsResponseDto>> GetTaskItem(int id)
     {
-        if (id <= 0)
-            return BadRequest("Id must be a positive number.");
+        var result = await _taskItemsService.GetTaskItem(id);
 
-        var taskItem = await _context.TaskItems
-            .Select(t => new TaskItemsResponseDto
-            {
-                Id = t.Id,
-                Title = t.Title,
-                DeadLine = t.DeadLine,
-                IsCompleted = t.IsCompleted,
-                ProjectId = t.ProjectId,
-                ProjectName = t.Project!.Title
-            }).FirstOrDefaultAsync(x => x.Id == id);
-
-        if (taskItem == null)
-            return NotFound("The specified TaskItem does not exist.");
-
-        return Ok(taskItem);
-    }
-
-    // create a new task item------------------------------------------------------------------------------------------------
-    [HttpPost]
-    public async Task<ActionResult<TaskItemsResponseDto>> PostTaskItem(TaskCreateDto newTaskItem)
-    {
-        var project = await _context.Projects
-            .Where(p => p.Id == newTaskItem.ProjectId)
-            .Select(p => new { p.Id, p.Title, p.UserId })
-            .FirstOrDefaultAsync();
-
-        if (project == null)
-            return BadRequest("The specified ProjectId does not exist.");
-
-        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
-        if (currentUserId != project.UserId)
-            return Forbid("You are not authorized to create a task for this project.");
-
-        var taskItem = new TaskItem
-        {
-            Title = newTaskItem.Title,
-            IsCompleted = newTaskItem.IsCompleted,
-            DeadLine = newTaskItem.DeadLine,
-            ProjectId = newTaskItem.ProjectId
-        };
-
-        _context.TaskItems.Add(taskItem);
-        await _context.SaveChangesAsync();
-
-        var responseDto = new TaskItemsResponseDto
-        {
-            Id = taskItem.Id,
-            Title = taskItem.Title,
-            IsCompleted = taskItem.IsCompleted,
-            DeadLine = taskItem.DeadLine,
-            ProjectId = taskItem.ProjectId,
-            ProjectName = project.Title
-        };
-
-        return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, responseDto);
-    }
-    // update a task item by id----------------------------------------------------------------------------------------------
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(int id, TaskUpdateDto updatedTask)
-    {
-        if (id <= 0)
-            return BadRequest("Id must be a positive number.");
-
-        var task = await _context.TaskItems.FindAsync(id);
-
-        if (task == null)
-            return NotFound("The specified TaskItem does not exist.");
-
-        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var project = await _context.Projects.FindAsync(task.ProjectId);
-
-        if(project == null)
-            return NotFound("The project associated with this task does not exist.");
-
-        if (currentUserId != project.UserId)
-            return Forbid("You are not authorized to update this task.");
-
-        task.Title = updatedTask.Title;
-        task.IsCompleted = updatedTask.IsCompleted;
-        task.DeadLine = updatedTask.DeadLine;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    // Delete a task item by id----------------------------------------------------------------------------------------------
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTaskItem(int id)
-    {
-        if (id <= 0)
-            return BadRequest("Id must be a positive number.");
-
-        var task = await _context.TaskItems.FindAsync(id);
-
-        if (task == null)
-            return NotFound("The specified TaskItem does not exist.");
-
-        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var project = await _context.Projects.FindAsync(task.ProjectId);
-
-        if (project == null)
-            return NotFound("The project associated with this task does not exist.");
-
-        if (currentUserId != project.UserId)
-            return Forbid("You are not authorized to delete  this task.");
-
-        _context.TaskItems.Remove(task);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        return Ok(result);
     }
 
     // Get all tasks for a specific project----------------------------------------------------------------------------------
     [HttpGet("project/{projectId}")]
     public async Task<ActionResult<IEnumerable<TaskItemsResponseDto>>> GetTasksByProject(int projectId)
     {
-        var projectExists = await _context.Projects.AnyAsync(p => p.Id == projectId);
+        var result = await _taskItemsService.GetTasksByProject(projectId);
+        return Ok(result);
+    }
 
-        if (!projectExists)
-            return NotFound("The specified Project does not exist.");
+    // create a new task item------------------------------------------------------------------------------------------------
+    [HttpPost]
+    public async Task<ActionResult<TaskItemsResponseDto>> CreateTask(TaskCreateDto newTaskItem)
+    {
+        var result = await _taskItemsService.CreateTask(newTaskItem);
 
-        var tasks = await _context.TaskItems
-            .Where(t => t.ProjectId == projectId)
-            .Select(t => new TaskItemsResponseDto
-            {
-                Id = t.Id,
-                Title = t.Title,
-                IsCompleted = t.IsCompleted,
-                DeadLine = t.DeadLine,
-                ProjectId = t.ProjectId,
-                ProjectName = t.Project!.Title
-            })
-            .ToListAsync();
+        return CreatedAtAction(nameof(GetTaskItem), new { id = result.Id }, result);
+    }
 
-        return Ok(tasks);
+    // update a task item by id----------------------------------------------------------------------------------------------
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateTask(int id, TaskUpdateDto updatedTask)
+    {
+        await _taskItemsService.UpdateTask(id, updatedTask);
+
+        return Ok("Task updated successfully.");
+    }
+
+    // Delete a task item by id----------------------------------------------------------------------------------------------
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteTaskItem(int id)
+    {
+        await _taskItemsService.DeleteTask(id);
+
+        return Ok("Task deleted sucessfuly.");
     }
 }

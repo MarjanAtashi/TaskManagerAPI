@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using TaskManagerAPI.Data;
-using TaskManagerAPI.DTOs.SharedDtos;
 using TaskManagerAPI.DTOs.UserDTO;
-using TaskManagerAPI.Services;
+using TaskManagerAPI.Services.Interfaces;
 namespace TaskManagerAPI.Controllers
 {
     [Route("api/[controller]")]
@@ -13,14 +9,13 @@ namespace TaskManagerAPI.Controllers
     [Authorize]
     public class UsersController : ControllerBase
     {
+        private readonly IUserService _userService;
+        private readonly ICurrentUserService _currentUser;
 
-        private readonly AppDbContext _context;
-        private readonly PasswordService _passwordService;
-
-        public UsersController(AppDbContext context, PasswordService passwordService)
+        public UsersController(IUserService userService, ICurrentUserService currentUser)
         {
-            _context = context;
-            _passwordService = passwordService;
+            _userService = userService;
+            _currentUser = currentUser;
         }
 
         //List of all users --------------------------------------------------------------------------------------------------
@@ -28,14 +23,8 @@ namespace TaskManagerAPI.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllUsers()
         {
-            var users = await _context.Users.Select(u => new UserResponseDto
-            {
-                Id = u.Id,
-                Username = u.Username,
-                Email = u.Email,
-            }).ToListAsync();
-
-            return Ok(users);
+            var result = await _userService.GetAllUsers();
+            return Ok(result);
         }
 
         // Get a specific user by Id -----------------------------------------------------------------------------------------
@@ -43,23 +32,8 @@ namespace TaskManagerAPI.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserResponseDto>> GetUser(int id)
         {
-
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
-
-            var user = await _context.Users
-          .Select(u => new UserResponseDto
-          {
-              Id = u.Id,
-              Username = u.Username,
-              Email = u.Email,
-          }).FirstOrDefaultAsync(x => x.Id == id);
-
-            if (user == null)
-                return NotFound("There is no user with the specified ID.");
-
-
-            return Ok(user);
+            var result = await _userService.GetUser(id);
+            return Ok(result);
         }
 
         // Get a specific user by Id with project details -------------------------------------------------------------------
@@ -67,31 +41,8 @@ namespace TaskManagerAPI.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserWithProjectsDto>> GetUserByIdWithDetails(int id)
         {
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
-
-            var user = await _context.Users
-                .Select(u => new UserWithProjectsDto
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email,
-                    ProjectCount = u.Projects.Count,
-                    Projects = u.Projects.Select(p => new ProjectSummaryDto
-                    {
-                        Id = p.Id,
-                        Title = p.Title,
-                        Description = p.Description,
-                        DeadLine = p.DeadLine
-                    }).ToList()
-                })
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            if (user == null)
-                return NotFound("There is no user with the specified ID.");
-
-
-            return Ok(user);
+            var result = await _userService.GetUserByIdWithDetails(id);
+            return Ok(result);
         }
 
         // Get a specific user by Id with project details and its tasks -----------------------------------------------------
@@ -99,37 +50,42 @@ namespace TaskManagerAPI.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserWithProjectsAndTasksDto>> GetUserByIdWithProjectsAndTasks(int id)
         {
+            var result = await _userService.GetUserByIdWithProjectsAndTasks(id);
 
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
-
-            var user = await _context.Users
-                .Select(u => new UserWithProjectsAndTasksDto
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email,
-                    Projects = u.Projects.Select(p => new FullProjectSummaryDto
-                    {
-                        Id = p.Id,
-                        Title = p.Title,
-                        TaskItems = p.TaskItems.Select(t => new TaskSummaryDto
-                        {
-                            Id = t.Id,
-                            Title = t.Title,
-                            IsCompleted = t.IsCompleted
-                        }).ToList()
-                    }).ToList()
-                })
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            if (user == null)
-                return NotFound("There is no user with the specified ID.");
-
-            return Ok(user);
+            return Ok(result);
         }
 
+        // Update an existing user -------------------------------------------------------------------------------------------
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateUser(int id, UserUpdateDto updatedUserDto)
+        {
+            await _userService.UpdateUser(id, updatedUserDto);
 
+            return Ok("User updated sucessfuly.");
+
+        }
+
+        // Delete a user -----------------------------------------------------------------------------------------------------
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            await _userService.DeleteUser(id);
+            return Ok("User deleted sucessfuly.");
+        }
+
+        //-------------------------------------------------------------------------------------------------------------------
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            return Ok(new
+            {
+                _currentUser.UserId,
+                _currentUser.Username,
+                _currentUser.Role
+            });
+
+        }
         // Create a new user ------------------------------------------------------------------------------------------------
         /*  [HttpPost]
           public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
@@ -160,84 +116,5 @@ namespace TaskManagerAPI.Controllers
 
               return CreatedAtAction(nameof(GetUser), new { id = user.Id }, responseDto);
           }*/
-
-        // Update an existing user -------------------------------------------------------------------------------------------
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(int id, UserUpdateDto updatedUserDto)
-        {
-
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
-            if (id == 1)
-                return BadRequest("Can not edit this user");
-
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-                return NotFound("There is no user with the specified ID.");
-
-
-            if (await _context.Users.AnyAsync(u => u.Username == updatedUserDto.Username && u.Id != id))
-                return BadRequest("Username already exists.");
-
-            if (await _context.Users.AnyAsync(u => u.Email == updatedUserDto.Email && u.Id != id))
-                return BadRequest("Email already exists.");
-
-
-            user.Username = updatedUserDto.Username;
-            user.Email = updatedUserDto.Email;
-            user.PasswordHash = _passwordService.HashPassword(updatedUserDto.Password);
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        // Delete a user -----------------------------------------------------------------------------------------------------
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteUser(int id)
-        {
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
-
-            if (id == 1)
-                return BadRequest("System user cannot be deleted.");
-
-
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-                return NotFound("There is no user with the specified ID.");
-
-            var projects = await _context.Projects.Where(p => p.UserId == id).ToListAsync();
-
-            foreach (var project in projects)
-                project.UserId = 1;
-
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        //-------------------------------------------------------------------------------------------------------------------
-        [HttpGet("me")]
-        public IActionResult Me()
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var username = User.FindFirst(ClaimTypes.Name)?.Value;
-            var role = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            return Ok(new
-            {
-                UserId = userId,
-                Username = username,
-                Role = role
-            });
-
-        }
-
     }
 }

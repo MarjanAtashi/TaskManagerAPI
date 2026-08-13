@@ -4,10 +4,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using TaskManagerAPI.Models;
-
-namespace TaskManagerAPI.Services
+using TaskManagerAPI.Services.Interfaces;
+namespace TaskManagerAPI.Services.Implementations
 {
-    public class TokenService
+    public class TokenService : ITokenService
     {
         private readonly IConfiguration _configuration;
 
@@ -15,7 +15,6 @@ namespace TaskManagerAPI.Services
         {
             _configuration = configuration;
         }
-
 
         public string GenerateAccessToken(User user)
         {

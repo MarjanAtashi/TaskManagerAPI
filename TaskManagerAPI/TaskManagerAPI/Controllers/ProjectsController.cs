@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using TaskManagerAPI.Data;
 using TaskManagerAPI.DTOs.ProjectDTO;
-using TaskManagerAPI.DTOs.SharedDtos;
-using TaskManagerAPI.Models;
+using TaskManagerAPI.Services.Interfaces;
 
 namespace TaskManagerAPI.Controllers
 {
@@ -14,143 +10,58 @@ namespace TaskManagerAPI.Controllers
     [Authorize]
     public class ProjectsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IProjectService _projectService;
 
-        public ProjectsController(AppDbContext context)
+        public ProjectsController(IProjectService projectService)
         {
-            _context = context;
-
+            _projectService = projectService;
         }
 
-        // List all projects with owner--------------------------------------------------------------------------------------
+        // List all projects ------------------------------------------------------------------------------------------------------
         [HttpGet]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<ProjectsWithOwnerDto>>> GetAllProjects()
         {
-            var projects = await _context.Projects
-            .Select(p => new ProjectsWithOwnerDto
-            {
-                Id = p.Id,
-                Title = p.Title,
-                Description = p.Description,
-                UserId = p.UserId,
-                DeadLine = p.DeadLine,
-                Username = p.User!.Username
-            }).ToListAsync();
+            var result = await _projectService.GetAllProjects();
 
-            return Ok(projects);
+            return Ok(result);
         }
 
-        // Get a specific project by ID with its owner and tasks--------------------------------------------------------------------
+        // Get a specific project -------------------------------------------------------------------------------------------------
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ProjectResponseWithOwnerAndTasksDTO>> GetProject(int id)
         {
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
+            var result = await _projectService.GetProject(id);
 
-            var project = await _context.Projects.Select(p => new ProjectResponseWithOwnerAndTasksDTO
-            {
-                Id = p.Id,
-                Title = p.Title,
-                Description = p.Description,
-                DeadLine = p.DeadLine,
-                UserId = p.UserId,
-                Username = p.User!.Username,
-                TaskItems = p.TaskItems.Select(t => new TaskSummaryDto
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    DeadLine = t.DeadLine,
-                    IsCompleted = t.IsCompleted
-                }).ToList()
-            }).FirstOrDefaultAsync(x => x.Id == id);
-
-
-            if (project == null)
-                return NotFound("There is no project with the specified ID.");
-
-            return Ok(project);
+            return Ok(result);
         }
 
         // Create a new project----------------------------------------------------------------------------------------------
         [HttpPost]
         public async Task<ActionResult<ProjectResponseDto>> CreateProject(ProjectCreateDto newProject)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var result = await _projectService.CreateProject(newProject);
 
-            var project = new Project
-            {
-                Title = newProject.Title,
-                Description = newProject.Description,
-                DeadLine = newProject.DeadLine,
-                UserId = currentUserId
-            };
-
-            _context.Projects.Add(project);
-
-            await _context.SaveChangesAsync();
-
-            var projectResponseDto = new ProjectResponseDto
-            {
-                Id = project.Id,
-                Title = project.Title,
-                Description = project.Description,
-                DeadLine = project.DeadLine,
-            };
-
-            return CreatedAtAction(nameof(GetProject), new { id = project.Id }, projectResponseDto);
+            return CreatedAtAction(nameof(GetProject), new { id = result.Id }, result);
         }
+
         // Update an existing project----------------------------------------------------------------------------------------
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProject(int id, ProjectUpdateDto updatedProject)
         {
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
+            await _projectService.UpdateProject(id, updatedProject);
 
-            var project = await _context.Projects.FindAsync(id);
-
-            if (project == null)
-                return NotFound("There is no project with the specified ID.");
-
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
-            if (currentUserId != project.UserId)
-                return Forbid("You are not the owner of this project.");
-
-            project.Title = updatedProject.Title;
-            project.Description = updatedProject.Description;
-            project.DeadLine = updatedProject.DeadLine;
-
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return Ok("Project updated sucessfuly.");
         }
-
 
         // Delete a project--------------------------------------------------------------------------------------------------
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
-            if (id <= 0)
-                return BadRequest("Id must be a positive number.");
+            await _projectService.DeleteProject(id);
 
-            var project = await _context.Projects.FindAsync(id);
-
-            if (project == null)
-                return NotFound("There is no project with the specified ID.");
-
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
-            if (currentUserId != project.UserId)
-                return Forbid("You are not the owner of this project.");
-
-            _context.Projects.Remove(project);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return Ok("Project deleted sucessfuly.");
         }
+
     }
 
 }
